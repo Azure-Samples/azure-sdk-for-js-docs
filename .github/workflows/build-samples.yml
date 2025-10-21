@@ -19,8 +19,8 @@ jobs:
       - name: Find all samples with package.json
         id: find-samples
         run: |
-          # Find all directories with package.json files, excluding the root
-          samples=$(find samples -name "package.json" -type f | sed 's|/package.json||' | jq -R -s -c 'split("\n")[:-1]')
+          # Find all directories with package.json files, excluding node_modules
+          samples=$(find samples -name "package.json" -not -path "*/node_modules/*" -type f | sed 's|/package.json||' | jq -R -s -c 'split("\n")[:-1]')
           echo "samples=$samples" >> $GITHUB_OUTPUT
           echo "Found samples:"
           echo "$samples" | jq -r '.[]'
