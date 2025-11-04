@@ -51,11 +51,19 @@ fi
 # Get current subscription and user information
 SUBSCRIPTION_ID=$(az account show --query id --output tsv)
 SUBSCRIPTION_NAME=$(az account show --query name --output tsv)
+TENANT_ID=$(az account show --query tenantId --output tsv)
 CURRENT_USER_OBJECT_ID=$(az ad signed-in-user show --query id --output tsv)
 CURRENT_USER_UPN=$(az ad signed-in-user show --query userPrincipalName --output tsv)
 
 print_success "Authenticated as: ${CURRENT_USER_UPN}"
 print_status "Using subscription: ${SUBSCRIPTION_NAME} (${SUBSCRIPTION_ID})"
+print_status "Tenant ID: ${TENANT_ID}"
+
+# Verify we can list role definitions (this helps diagnose RBAC issues)
+print_status "Verifying RBAC access..."
+if ! az role definition list --name "Key Vault Secrets Officer" --output none 2>/dev/null; then
+    print_warning "Cannot access role definitions. This may indicate insufficient permissions."
+fi
 print_status "Resource prefix: ${RESOURCE_PREFIX}"
 print_status "Random suffix: ${RANDOM_SUFFIX}"
 print_status "Location: ${LOCATION}"
@@ -89,7 +97,7 @@ else
     exit 1
 fi
 
-# Create Key Vault with RBAC enabled
+# Create Key Vault with RBAC authorization enabled
 print_status "Creating Key Vault: ${KEY_VAULT_NAME}..."
 az keyvault create \
     --name "${KEY_VAULT_NAME}" \
@@ -109,58 +117,81 @@ fi
 print_status "Waiting for Key Vault to be fully provisioned..."
 sleep 10
 
+# Ensure we're using the correct subscription context
+print_status "Setting subscription context to: ${SUBSCRIPTION_ID}..."
+az account set --subscription "${SUBSCRIPTION_ID}"
+
 # Get the Key Vault resource ID
+print_status "Getting Key Vault resource ID..."
 KEY_VAULT_ID=$(az keyvault show --name "${KEY_VAULT_NAME}" --resource-group "${RESOURCE_GROUP_NAME}" --query id --output tsv)
+print_status "Key Vault ID: ${KEY_VAULT_ID}"
+
+# Verify current user object ID
+print_status "Current user object ID: ${CURRENT_USER_OBJECT_ID}"
 
 # Assign Key Vault Secrets Officer role to current user
 print_status "Assigning 'Key Vault Secrets Officer' role to current user..."
-az role assignment create \
-    --role "Key Vault Secrets Officer" \
-    --assignee "${CURRENT_USER_OBJECT_ID}" \
-    --scope "${KEY_VAULT_ID}" \
-    --output none
 
-if [ $? -eq 0 ]; then
-    print_success "Role assignment completed successfully."
+# Ensure we have the Key Vault resource ID
+KEY_VAULT_ID=$(az keyvault show --name "${KEY_VAULT_NAME}" --resource-group "${RESOURCE_GROUP_NAME}" --query id --output tsv)
+print_status "Key Vault ID: ${KEY_VAULT_ID}"
+
+# Assign the RBAC role with proper error handling
+if az role assignment create \
+    --assignee "${CURRENT_USER_OBJECT_ID}" \
+    --role "Key Vault Secrets Officer" \
+    --scope "${KEY_VAULT_ID}" \
+    --output none 2>/dev/null; then
+    print_success "RBAC role assignment completed successfully."
+    RBAC_SUCCESS=true
 else
-    print_error "Failed to assign role. You may need to assign permissions manually."
+    print_error "RBAC role assignment failed. You may need to assign the role manually:"
+    print_error "  az role assignment create --assignee '${CURRENT_USER_OBJECT_ID}' --role 'Key Vault Secrets Officer' --scope '${KEY_VAULT_ID}'"
+    print_warning "This could be due to insufficient permissions or subscription limitations."
+    RBAC_SUCCESS=false
 fi
 
-# Create a sample secret for testing with retry logic for RBAC propagation
-print_status "Creating sample secret 'MySecret' for testing..."
-print_warning "Note: RBAC permissions may take up to 5 minutes to propagate. Retrying if needed..."
+# Create a sample secret for testing with RBAC propagation retry
+if [ "$RBAC_SUCCESS" = true ]; then
+    print_status "Creating sample secret 'MySecret' for testing..."
+    print_warning "Note: RBAC permissions may take up to 5 minutes to propagate. Retrying if needed..."
 
-MAX_RETRIES=12  # 12 retries = up to 6 minutes total
-RETRY_COUNT=0
-RETRY_DELAY=10  # Start with 10 seconds
+    MAX_RETRIES=12  # 12 retries = up to 6 minutes total
+    RETRY_COUNT=0
+    RETRY_DELAY=10  # Start with 10 seconds
 
-while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    if [ $RETRY_COUNT -gt 0 ]; then
-        print_status "Attempt $((RETRY_COUNT + 1))/$MAX_RETRIES - Waiting ${RETRY_DELAY} seconds for RBAC propagation..."
-        sleep $RETRY_DELAY
-        # Increase delay for next retry (exponential backoff, capped at 30s)
-        RETRY_DELAY=$((RETRY_DELAY < 30 ? RETRY_DELAY + 5 : 30))
-    fi
-    
-    # Attempt to create the secret
-    if az keyvault secret set \
-        --vault-name "${KEY_VAULT_NAME}" \
-        --name "MySecret" \
-        --value "Hello from Azure Key Vault! This is a test secret for brokered authentication." \
-        --output none 2>&1; then
-        print_success "Sample secret created successfully!"
-        break
-    else
-        RETRY_COUNT=$((RETRY_COUNT + 1))
-        if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
-            print_warning "Failed to create sample secret after $MAX_RETRIES attempts."
-            print_warning "RBAC permissions may still be propagating. You can:"
-            print_warning "  1. Wait a few more minutes and try manually:"
-            print_warning "     az keyvault secret set --vault-name ${KEY_VAULT_NAME} --name MySecret --value 'test'"
-            print_warning "  2. Or proceed - the Key Vault is ready, just permissions need time."
+    while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+        if [ $RETRY_COUNT -gt 0 ]; then
+            print_status "Attempt $((RETRY_COUNT + 1))/$MAX_RETRIES - Waiting ${RETRY_DELAY} seconds for RBAC propagation..."
+            sleep $RETRY_DELAY
+            # Increase delay for next retry (exponential backoff, capped at 30s)
+            RETRY_DELAY=$((RETRY_DELAY < 30 ? RETRY_DELAY + 5 : 30))
         fi
-    fi
-done
+        
+        # Attempt to create the secret
+        if az keyvault secret set \
+            --vault-name "${KEY_VAULT_NAME}" \
+            --name "MySecret" \
+            --value "Hello from Azure Key Vault! This is a test secret for brokered authentication." \
+            --output none 2>/dev/null; then
+            print_success "Sample secret created successfully!"
+            break
+        else
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+                print_warning "Failed to create sample secret after $MAX_RETRIES attempts."
+                print_warning "RBAC permissions may still be propagating. You can create it manually:"
+                print_warning "  az keyvault secret set --vault-name ${KEY_VAULT_NAME} --name MySecret --value 'test'"
+                print_warning "Or wait a few more minutes and try again."
+            fi
+        fi
+    done
+else
+    print_warning "Skipping secret creation due to RBAC assignment failure."
+    print_warning "You can create the secret manually after setting up RBAC permissions:"
+    print_warning "  1. First assign the role: az role assignment create --assignee '${CURRENT_USER_OBJECT_ID}' --role 'Key Vault Secrets Officer' --scope '${KEY_VAULT_ID}'"
+    print_warning "  2. Then create secret: az keyvault secret set --vault-name ${KEY_VAULT_NAME} --name MySecret --value 'test'"
+fi
 
 # Display summary
 echo ""
