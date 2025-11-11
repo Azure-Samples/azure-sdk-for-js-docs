@@ -1,24 +1,27 @@
+import { SecretClient } from "@azure/keyvault-secrets";
+
+// <BROKER>
 import { useIdentityPlugin, InteractiveBrowserCredential, AuthenticationError } from "@azure/identity";
 import { nativeBrokerPlugin } from "@azure/identity-broker";
-import { SecretClient } from "@azure/keyvault-secrets";
 
 // Register the native broker plugin for brokered authentication
 useIdentityPlugin(nativeBrokerPlugin);
 
-try {
-    // Use InteractiveBrowserCredential with broker for interactive authentication
-    // On Windows: Uses Windows Authentication Manager (WAM) - you'll be prompted to sign in
-    // On macOS/Linux: Opens a browser window for authentication
-    const credential = new InteractiveBrowserCredential({
-        tenantId: process.env.AZURE_TENANT_ID!, // Specify your tenant ID
-        brokerOptions: {
-            enabled: true,
-            useDefaultBrokerAccount: true,
-            // For Node.js console apps, we need to provide an empty buffer for parentWindowHandle
-            parentWindowHandle: new Uint8Array(0),
-        },
-    });
+// Use InteractiveBrowserCredential with broker for interactive authentication
+// On Windows: Uses Windows Authentication Manager (WAM) - you'll be prompted to sign in
+// On macOS/Linux: Opens a browser window for authentication
+const credential = new InteractiveBrowserCredential({
+    tenantId: process.env.AZURE_TENANT_ID!, // Specify your tenant ID
+    brokerOptions: {
+        enabled: true,
+        useDefaultBrokerAccount: true,
+        // For Node.js console apps, we need to provide an empty buffer for parentWindowHandle
+        parentWindowHandle: new Uint8Array(0),
+    },
+});
+// </BROKER>
 
+try {
     // Configure Key Vault client
     // Set AZURE_KEY_VAULT_URL environment variable or update this line with your vault URL
     const vaultUri = process.env.AZURE_KEY_VAULT_URL! || "https://<your-key-vault-name>.vault.azure.net/";
