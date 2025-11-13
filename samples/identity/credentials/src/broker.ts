@@ -8,9 +8,11 @@ import { nativeBrokerPlugin } from "@azure/identity-broker";
 // Register the native broker plugin for brokered authentication
 useIdentityPlugin(nativeBrokerPlugin);
 
-// Use InteractiveBrowserCredential with broker for interactive authentication
+// Use InteractiveBrowserCredential with broker for interactive or silent authentication
+
 // On Windows: Uses Windows Authentication Manager (WAM) - you'll be prompted to sign in
-// On macOS and Linux: Opens a browser window for authentication
+// On macOS: Opens a browser window for authentication, since the broker flow isn't currently supported.
+// On Linux: Uses Microsoft Single Sign-on (SSO) for Linux.
 
 const credential = new InteractiveBrowserCredential({
     brokerOptions: {
