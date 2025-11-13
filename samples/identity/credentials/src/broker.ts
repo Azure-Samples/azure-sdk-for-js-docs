@@ -10,8 +10,8 @@ useIdentityPlugin(nativeBrokerPlugin);
 
 // Use InteractiveBrowserCredential with broker for interactive authentication
 // On Windows: Uses Windows Authentication Manager (WAM) - you'll be prompted to sign in
-// On macOS: Opens a browser window for authentication
-// On Linux: Falls back to device code flow as broker is not supported
+// On macOS and Linux: Opens a browser window for authentication
+
 const credential = new InteractiveBrowserCredential({
     brokerOptions: {
         enabled: true,
