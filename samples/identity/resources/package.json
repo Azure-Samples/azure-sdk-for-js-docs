@@ -1,0 +1,23 @@
+{
+  "name": "list-resources",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "npx tsx src/list-resources.ts",
+    "start": "node dist/list-resources.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@azure/arm-resources": "^7.0.0",
+    "@azure/identity": "^4.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3"
+  }
+}
