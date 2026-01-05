@@ -72,7 +72,7 @@ jobs:
             echo "🔍 No build script or tsconfig.json found, checking TypeScript syntax"
             # Check if there are TypeScript files and validate syntax
             if find . -name "*.ts" -not -path "./node_modules/*" | head -1 | grep -q .; then
-              npx tsc --noEmit --skipLibCheck $(find . -name "*.ts" -not -path "./node_modules/*")
+              find . -name "*.ts" -not -path "./node_modules/*" -print0 | xargs -0 npx tsc --noEmit --skipLibCheck
             else
               echo "ℹ️ No TypeScript files found to validate"
             fi
