@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint \"samples/**/*.{js,ts}\"",
-    "lint:fix": "eslint \"samples/**/*.{js,ts}\" --fix"
+    "lint:fix": "eslint \"samples/**/*.{js,ts}\" --fix",
+    "build:samples": "./build-samples.sh"
   },
   "repository": {
     "type": "git",

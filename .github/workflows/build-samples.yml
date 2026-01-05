@@ -1,0 +1,181 @@
+name: Build All Samples
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  discover-samples:
+    runs-on: ubuntu-latest
+    outputs:
+      samples: ${{ steps.find-samples.outputs.samples }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Find all samples with package.json
+        id: find-samples
+        run: |
+          # Find all directories with package.json files, excluding node_modules
+          samples=$(find samples -name "package.json" -not -path "*/node_modules/*" -type f | sed 's|/package.json||' | jq -R -s -c 'split("\n")[:-1]')
+          echo "samples=$samples" >> $GITHUB_OUTPUT
+          echo "Found samples:"
+          if [ "$samples" = "[]" ]; then
+            echo "No samples with package.json were found under the 'samples' directory."
+            echo "Failing the workflow to avoid reporting a successful build when no samples are built."
+            exit 1
+          fi
+          echo "$samples" | jq -r '.[]'
+
+  build-samples:
+    needs: discover-samples
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        sample: ${{ fromJson(needs.discover-samples.outputs.samples) }}
+      fail-fast: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Build sample - ${{ matrix.sample }}
+        id: build-sample
+        working-directory: ${{ matrix.sample }}
+        continue-on-error: true
+        run: |
+          echo "🔨 Building sample in directory: ${{ matrix.sample }}"
+          
+          # Use dependencies installed at the repository root
+          echo "📦 Using dependencies installed at repository root (skipping npm ci in sample)..."
+          
+          # Check if there's a build script, otherwise try to compile TypeScript
+          if npm run 2>&1 | grep -q "^  build$"; then
+          if npm run | grep -q "build"; then
+            echo "🏗️ Running npm run build"
+            npm run build
+          elif [ -f "tsconfig.json" ]; then
+            echo "🔧 No build script found, running TypeScript compiler"
+            npx tsc --noEmit
+          else
+            echo "🔍 No build script or tsconfig.json found, checking TypeScript syntax"
+            # Check if there are TypeScript files and validate syntax
+            if find . -name "*.ts" -not -path "./node_modules/*" | head -1 | grep -q .; then
+              find . -name "*.ts" -not -path "./node_modules/*" -print0 | xargs -0 npx tsc --noEmit --skipLibCheck
+            else
+              echo "ℹ️ No TypeScript files found to validate"
+            fi
+          fi
+
+      - name: Save build result
+        if: always()
+        run: |
+          mkdir -p build-results
+          if [ "${{ steps.build-sample.outcome }}" = "success" ]; then
+            echo "success" > "build-results/$(echo \"${{ matrix.sample }}\" | tr '/' '_').result"
+            echo "✅ ${{ matrix.sample }}: BUILD SUCCESS"
+          else
+            echo "failure" > "build-results/$(echo \"${{ matrix.sample }}\" | tr '/' '_').result"
+            echo "❌ ${{ matrix.sample }}: BUILD FAILED"
+          fi
+
+      - name: Upload build results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-result-${{ hashFiles(format('{0}/package.json', matrix.sample)) }}
+          path: build-results/
+          retention-days: 1
+
+  build-summary:
+    needs: [discover-samples, build-samples]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check if any builds failed
+        id: check-failures
+        run: |
+          # Check if any matrix job failed
+          build_results='${{ toJson(needs.build-samples.outcome) }}'
+          if [[ "$build_results" == *"failure"* ]]; then
+            echo "has_failures=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_failures=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download all build results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: build-result-*
+          merge-multiple: true
+          path: build-results/
+
+      - name: Generate comprehensive build summary
+        run: |
+          echo "# 📊 Sample Build Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 🎯 Summary" >> $GITHUB_STEP_SUMMARY
+          
+          echo "| Sample | Status | Details |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|--------|---------|" >> $GITHUB_STEP_SUMMARY
+          
+          # Process each sample result
+          samples='${{ needs.discover-samples.outputs.samples }}'
+          
+          # Iterate over each sample and append its result to the summary table
+          echo "$samples" | jq -r '.[]' | while read -r sample; do
+            result_file="build-results/$(echo "$sample" | tr '/' '_').result"
+            
+            if [ -f "$result_file" ]; then
+              result=$(cat "$result_file")
+              if [ "$result" = "success" ]; then
+                echo "| \`$sample\` | ✅ **SUCCESS** | Build completed successfully |" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "| \`$sample\` | ❌ **FAILED** | Build encountered errors |" >> $GITHUB_STEP_SUMMARY
+              fi
+            else
+              echo "| \`$sample\` | ⚠️ **UNKNOWN** | No result file found |" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 📈 Statistics" >> $GITHUB_STEP_SUMMARY
+          total_samples=$(echo '${{ needs.discover-samples.outputs.samples }}' | jq '. | length')
+          echo "- **Total Samples**: $total_samples" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build Strategy**: Matrix build with fail-fast disabled" >> $GITHUB_STEP_SUMMARY
+          echo "- **Node.js Version**: 20" >> $GITHUB_STEP_SUMMARY
+          echo "- **Runner**: ubuntu-latest" >> $GITHUB_STEP_SUMMARY
+          
+          # Count actual results
+          success_count=$(find build-results -name "*.result" -exec grep -l "success" {} \; 2>/dev/null | wc -l)
+          failed_count=$(find build-results -name "*.result" -exec grep -l "failure" {} \; 2>/dev/null | wc -l)
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔢 Final Count" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ **Successful**: $success_count" >> $GITHUB_STEP_SUMMARY
+          echo "- ❌ **Failed**: $failed_count" >> $GITHUB_STEP_SUMMARY
+          
+          # Determine overall result
+          has_failures="${{ steps.check-failures.outputs.has_failures }}"
+          
+          if [ "$has_failures" = "true" ] || [ $failed_count -gt 0 ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ **Some builds failed!** Check the individual job logs for details." >> $GITHUB_STEP_SUMMARY
+            echo "❌ Workflow failed due to build failures"
+            exit 1
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "🎉 **All builds successful!**" >> $GITHUB_STEP_SUMMARY
+            echo "✅ All builds completed successfully"
+          fi
