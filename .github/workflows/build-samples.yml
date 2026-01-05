@@ -94,7 +94,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: build-result-${{ strategy.job-index }}
+          name: build-result-${{ hashFiles(format('{0}/package.json', matrix.sample)) }}
           path: build-results/
           retention-days: 1
 
