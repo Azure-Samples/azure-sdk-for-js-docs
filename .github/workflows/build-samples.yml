@@ -134,7 +134,7 @@ jobs:
           samples='${{ needs.discover-samples.outputs.samples }}'
           
           # Iterate over each sample and append its result to the summary table
-          echo "$samples" | jq -r '.[]' | while read sample; do
+          echo "$samples" | jq -r '.[]' | while read -r sample; do
             result_file="build-results/$(echo "$sample" | tr '/' '_').result"
             
             if [ -f "$result_file" ]; then
