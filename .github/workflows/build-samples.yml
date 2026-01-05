@@ -133,7 +133,7 @@ jobs:
           # Process each sample result
           samples='${{ needs.discover-samples.outputs.samples }}'
           
-          # Create a temp file to collect results
+          # Iterate over each sample and append its result to the summary table
           echo "$samples" | jq -r '.[]' | while read sample; do
             result_file="build-results/$(echo "$sample" | tr '/' '_').result"
             
