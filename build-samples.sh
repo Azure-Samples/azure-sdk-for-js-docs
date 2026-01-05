@@ -39,9 +39,16 @@ for sample in "${samples[@]}"; do
     
     pushd "$sample" > /dev/null
     
+    # Determine how to install dependencies for this sample
+    install_cmd="npm ci"
+    if [[ "$sample" == samples/foundry/* ]]; then
+        echo "  ℹ️ Detected workspace sample; skipping npm ci (dependencies managed by root workspace)"
+        install_cmd="true"
+    fi
+    
     # Build the sample
-    if npm ci && {
-        if npm run | grep -q "build"; then
+    if $install_cmd && {
+        if npm run 2>&1 | grep -q "^  build$"; then
             echo "  📝 Running npm run build"
             npm run build
         elif [ -f "tsconfig.json" ]; then
