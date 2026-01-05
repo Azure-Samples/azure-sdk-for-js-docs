@@ -83,10 +83,10 @@ jobs:
         run: |
           mkdir -p build-results
           if [ "${{ steps.build-sample.outcome }}" = "success" ]; then
-            echo "success" > "build-results/$(echo '${{ matrix.sample }}' | tr '/' '_').result"
+            echo "success" > "build-results/$(echo \"${{ matrix.sample }}\" | tr '/' '_').result"
             echo "✅ ${{ matrix.sample }}: BUILD SUCCESS"
           else
-            echo "failure" > "build-results/$(echo '${{ matrix.sample }}' | tr '/' '_').result"
+            echo "failure" > "build-results/$(echo \"${{ matrix.sample }}\" | tr '/' '_').result"
             echo "❌ ${{ matrix.sample }}: BUILD FAILED"
           fi
 
