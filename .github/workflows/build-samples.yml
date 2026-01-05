@@ -61,7 +61,7 @@ jobs:
           echo "📦 Using dependencies installed at repository root (skipping npm ci in sample)..."
           
           # Check if there's a build script, otherwise try to compile TypeScript
-          if npm run | grep -q "build"; then
+          if npm run 2>&1 | grep -q "^  build$"; then
           if npm run | grep -q "build"; then
             echo "🏗️ Running npm run build"
             npm run build
