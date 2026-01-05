@@ -8,7 +8,7 @@ set -e
 echo "🔍 Discovering samples..."
 
 # Find all sample directories with package.json, excluding node_modules
-samples=($(find samples -name "package.json" -not -path "*/node_modules/*" -type f | sed 's|/package.json||'))
+mapfile -t samples < <(find samples -name "package.json" -not -path "*/node_modules/*" -type f | sed 's|/package.json||')
 
 if [ ${#samples[@]} -eq 0 ]; then
     echo "❌ No samples found!"
