@@ -57,11 +57,11 @@ jobs:
         run: |
           echo "🔨 Building sample in directory: ${{ matrix.sample }}"
           
-          # Install dependencies
-          echo "📦 Installing dependencies..."
-          npm ci
+          # Use dependencies installed at the repository root
+          echo "📦 Using dependencies installed at repository root (skipping npm ci in sample)..."
           
           # Check if there's a build script, otherwise try to compile TypeScript
+          if npm run | grep -q "build"; then
           if npm run | grep -q "build"; then
             echo "🏗️ Running npm run build"
             npm run build
