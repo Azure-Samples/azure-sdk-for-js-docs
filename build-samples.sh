@@ -50,7 +50,7 @@ for sample in "${samples[@]}"; do
         else
             echo "  🔍 Checking TypeScript syntax"
             if find . -name "*.ts" -not -path "./node_modules/*" | head -1 | grep -q .; then
-                npx tsc --noEmit --skipLibCheck $(find . -name "*.ts" -not -path "./node_modules/*")
+                find . -name "*.ts" -not -path "./node_modules/*" -print0 | xargs -0 npx tsc --noEmit --skipLibCheck
             else
                 echo "  ℹ️ No TypeScript files found"
             fi
