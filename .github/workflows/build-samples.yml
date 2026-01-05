@@ -102,7 +102,7 @@ jobs:
         id: check-failures
         run: |
           # Check if any matrix job failed
-          build_results='${{ toJson(needs.build-samples.result) }}'
+          build_results='${{ toJson(needs.build-samples.outcome) }}'
           if [[ "$build_results" == *"failure"* ]]; then
             echo "has_failures=true" >> $GITHUB_OUTPUT
           else
