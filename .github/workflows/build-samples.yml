@@ -23,6 +23,11 @@ jobs:
           samples=$(find samples -name "package.json" -not -path "*/node_modules/*" -type f | sed 's|/package.json||' | jq -R -s -c 'split("\n")[:-1]')
           echo "samples=$samples" >> $GITHUB_OUTPUT
           echo "Found samples:"
+          if [ "$samples" = "[]" ]; then
+            echo "No samples with package.json were found under the 'samples' directory."
+            echo "Failing the workflow to avoid reporting a successful build when no samples are built."
+            exit 1
+          fi
           echo "$samples" | jq -r '.[]'
 
   build-samples:
