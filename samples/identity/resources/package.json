@@ -14,7 +14,7 @@
   "description": "",
   "dependencies": {
     "@azure/arm-resources": "^7.0.0",
-    "@azure/identity": "^4.13.0"
+    "@azure/identity": "^4.13.1"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
