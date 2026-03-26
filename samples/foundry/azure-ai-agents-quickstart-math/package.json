@@ -11,7 +11,7 @@
   "type": "module",
   "dependencies": {
     "@azure/ai-agents": "^1.1.0",
-    "@azure/identity": "^4.12.0"
+    "@azure/identity": "^4.13.1"
   },
   "devDependencies": {
     "@types/node": "^24.3.1",
