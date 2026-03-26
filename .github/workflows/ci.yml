@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+  # The build-samples.yml workflow handles per-sample builds.
+  # This job validates root-level install and lockfile integrity.
+  install-check:
+    name: Install check
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        directory:
+          - "."
+          - "samples/identity/credentials"
+          - "samples/identity/resources"
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: npm ci (${{ matrix.directory }})
+        working-directory: ${{ matrix.directory }}
+        run: npm ci

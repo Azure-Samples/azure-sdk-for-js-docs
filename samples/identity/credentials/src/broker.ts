@@ -1,4 +1,5 @@
 import { SecretClient } from "@azure/keyvault-secrets";
+import { RestError } from "@azure/core-rest-pipeline";
 import { AuthenticationError } from "@azure/identity";
 
 // <BROKER>
@@ -53,16 +54,15 @@ try {
     if (error instanceof AuthenticationError) {
         console.error(`🔐 Authentication failed: ${error.message}`);
         process.exit(2);
-    } else if (error instanceof Error && error.name === "RestError") {
-        const restError = error as any;
-        if (restError.statusCode) {
-            const errorMessage = restError.statusCode === 401
+    } else if (error instanceof RestError) {
+        if (error.statusCode) {
+            const errorMessage = error.statusCode === 401
                 ? "❌ Authentication failed. Please ensure you're signed in to Azure and have the correct permissions."
-                : restError.statusCode === 403
+                : error.statusCode === 403
                     ? "🚫 Access denied. Please check your Azure Key Vault access policies."
-                    : restError.statusCode === 404
+                    : error.statusCode === 404
                         ? "🔍 Secret 'MySecret' not found in the Key Vault. Please verify the secret name and Key Vault URL."
-                        : `⚠️ Azure Key Vault error (${restError.statusCode}): ${restError.message}`;
+                        : `⚠️ Azure Key Vault error (${error.statusCode}): ${error.message}`;
 
             console.error(errorMessage);
             process.exit(3);
