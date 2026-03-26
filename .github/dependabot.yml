@@ -1,0 +1,113 @@
+# Dependabot configuration for Azure SDK for JS Docs
+# https://docs.github.com/en/code-security/dependabot/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  # Root package.json (devDependencies: eslint tooling)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "diberry"
+    labels:
+      - "dependencies"
+    groups:
+      # Group eslint-related bumps together
+      eslint-tooling:
+        patterns:
+          - "@eslint/*"
+          - "eslint"
+          - "typescript-eslint"
+          - "globals"
+      # Group minor/patch dev deps
+      dev-deps-minor:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+        exclude-patterns:
+          - "@eslint/*"
+          - "eslint"
+          - "typescript-eslint"
+
+  # samples/identity/credentials
+  - package-ecosystem: "npm"
+    directory: "/samples/identity/credentials"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "diberry"
+    labels:
+      - "dependencies"
+    groups:
+      azure-sdk:
+        patterns:
+          - "@azure/*"
+      dev-deps:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # samples/identity/resources
+  - package-ecosystem: "npm"
+    directory: "/samples/identity/resources"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "diberry"
+    labels:
+      - "dependencies"
+    groups:
+      azure-sdk:
+        patterns:
+          - "@azure/*"
+
+  # samples/foundry/azure-ai-agents-quickstart-math
+  - package-ecosystem: "npm"
+    directory: "/samples/foundry/azure-ai-agents-quickstart-math"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "diberry"
+    labels:
+      - "dependencies"
+    groups:
+      azure-sdk:
+        patterns:
+          - "@azure/*"
+
+  # samples/foundry/azure-ai-agents-multiple-agents
+  - package-ecosystem: "npm"
+    directory: "/samples/foundry/azure-ai-agents-multiple-agents"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "diberry"
+    labels:
+      - "dependencies"
+    groups:
+      azure-sdk:
+        patterns:
+          - "@azure/*"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "github-actions"
