@@ -9,10 +9,6 @@ const files = [
     "fileName": "README.md"
   },
   {
-    "url": "https://github.com/Azure/azure-sdk-for-js/blob/main/gulpfile.ts",
-    "fileName": "gulpfile.ts"
-  },
-  {
     "url": "https://github.com/Azure/azure-sdk-for-js/blob/main/rush.json",
     "fileName": "rush.json"
   },  
