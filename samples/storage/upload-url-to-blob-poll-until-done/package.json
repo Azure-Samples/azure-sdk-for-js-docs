@@ -10,6 +10,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@azure/storage-blob": "^12.8.0"
+    "@azure/storage-blob": "^12.33.0"
   }
 }
